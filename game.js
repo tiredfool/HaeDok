@@ -18,14 +18,90 @@
   function relationshipLabel(){if(state.trust>=2)return'가까움';if(state.trust>=1)return'조금 가까움';if(state.trust<0)return'경계';return'낯섦'}
   function updateStatus(){$('traceStat').textContent='흔적 '+discoveredCount();$('memoryStat').textContent='기억 '+(state.memory?1:0);$('trustStat').textContent='화영 · '+relationshipLabel();renderPlaces();updateHint()}
   function updateHint(){let text='마을을 직접 살펴보자.';if(!state.traces.statement)text='화영에게 결계에 대해 물어볼 수 있다.';else if(!(state.traces.statement&&state.traces.painting))text='화영의 말과 맞지 않는 흔적이 있을지도 모른다.';else if(!state.decoded)text='기록의 해독 탭에서 두 흔적을 비교해보자.';else if(!state.memory)text='해독한 가설을 화영에게 확인해보자.';else text='첫 번째 기억이 복원됐다.';$('hint').textContent=text}
-  function say(name,text,options=[]){$('speaker').textContent=name;$('text').textContent=text;const box=$('choices');box.innerHTML='';options.forEach(option=>{const button=document.createElement('button');button.type='button';button.className='btn'+(option.primary?' primary':'');button.textContent=option.label;button.addEventListener('click',()=>{box.innerHTML='';option.action()});box.appendChild(button)})}
-  function playerSpeak(text,nextAction,nextLabel='계속'){say('일운','“'+text+'”',[{label:nextLabel,primary:true,action:nextAction}])}
-  function playerThink(text,nextAction,nextLabel='계속'){say('일운',text,nextAction?[{label:nextLabel,primary:true,action:nextAction}]:[])}
+  const TYPE_SPEED=32;
+  let typingTimer=null;
+  let isTyping=false;
+  let fullDialogueText='';
+  let dialogueIndex=0;
+  let pendingOptions=[];
+  let pendingAdvance=null;
+
+  function clearTypingTimer(){if(typingTimer!==null){clearInterval(typingTimer);typingTimer=null}}
+  function renderDialogueOptions(options){
+    const box=$('choices');
+    box.innerHTML='';
+    options.forEach(option=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='btn'+(option.primary?' primary':'');
+      button.textContent=option.label;
+      button.addEventListener('click',(event)=>{
+        event.stopPropagation();
+        box.innerHTML='';
+        option.action();
+      });
+      box.appendChild(button);
+    });
+  }
+  function finishTyping(){
+    clearTypingTimer();
+    isTyping=false;
+    $('text').textContent=fullDialogueText;
+    if(pendingOptions.length)renderDialogueOptions(pendingOptions);
+  }
+  function say(name,text,options=[],onAdvance=null){
+    clearTypingTimer();
+    $('speaker').textContent=name;
+    fullDialogueText=String(text??'');
+    dialogueIndex=0;
+    pendingOptions=options;
+    pendingAdvance=onAdvance;
+    $('text').textContent='';
+    $('choices').innerHTML='';
+    isTyping=true;
+
+    if(!fullDialogueText){
+      finishTyping();
+      return;
+    }
+
+    typingTimer=setInterval(()=>{
+      dialogueIndex+=1;
+      $('text').textContent=fullDialogueText.slice(0,dialogueIndex);
+      if(dialogueIndex>=fullDialogueText.length)finishTyping();
+    },TYPE_SPEED);
+  }
+  function advanceDialogue(event){
+    if(event.target.closest('button'))return;
+    if(isTyping){
+      finishTyping();
+      return;
+    }
+    if(pendingOptions.length)return;
+    if(pendingAdvance){
+      const next=pendingAdvance;
+      pendingAdvance=null;
+      next();
+    }
+  }
+  function playerSpeak(text,nextAction){say('일운','“'+text+'”',[],nextAction)}
+  function playerThink(text,nextAction){say('일운',text,[],nextAction)}
   function introFor(loc){if(loc==='house')return'화영의 방. 벽에 낯선 풍경의 그림이 걸려 있다.';if(loc==='barrier')return'결계 가까이 다가가자 표면에 긴 긁힌 자국이 보인다.';return'조용한 광장. 화영이 가로등 아래 서 있다.'}
   function renderPlaces(){const box=$('places');box.innerHTML='';[['plaza','광장'],['house','화영의 집'],['barrier','결계']].forEach(([id,label])=>{const button=document.createElement('button');button.type='button';button.className='place'+(state.loc===id?' on':'');button.disabled=!state.unlocked[id];button.textContent=(button.disabled?'🔒 ':'')+label;button.addEventListener('click',()=>{state.loc=id;closeArchive();renderScene();say('일운',introFor(id),id==='plaza'?[{label:'화영과 이야기한다',action:talk}]:[])});box.appendChild(button)})}
   function makeHotspot(key,left,top){const button=document.createElement('button');button.type='button';button.className='hot'+(state.traces[key]?' done':'');button.style.left=left;button.style.top=top;button.textContent='?';button.setAttribute('aria-label',traces[key].title);button.addEventListener('click',()=>inspect(key));$('hots').appendChild(button)}
   function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div><div class="char"></div>';makeHotspot('clock','31%','28%')}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%')}updateStatus()}
-  function inspect(key){state.traces[key]=true;renderScene();say('일운','흔적 발견 — '+traces[key].title,[{label:'기록에서 자세히 본다',primary:true,action:()=>openArchive('traces',key)}]);if(key==='painting'&&state.traces.statement&&!state.decoded){setTimeout(()=>say('일운','잠깐. 밖에 나간 적 없다는 말과 이 그림은 서로 맞지 않는다.',[{label:'두 흔적을 비교한다',primary:true,action:()=>openArchive('decode')}]),180)}}
+  function inspect(key){
+    state.traces[key]=true;
+    renderScene();
+    if(key==='painting'&&state.traces.statement&&!state.decoded){
+      say('일운','흔적 발견 — '+traces[key].title,[],()=>say('일운','잠깐. 밖에 나간 적 없다는 말과 이 그림은 서로 맞지 않는다.',[
+        {label:'두 흔적을 비교한다',primary:true,action:()=>openArchive('decode')},
+        {label:'그림의 기록을 자세히 본다',action:()=>openArchive('traces',key)}
+      ]));
+      return;
+    }
+    say('일운','흔적 발견 — '+traces[key].title,[{label:'기록에서 자세히 본다',primary:true,action:()=>openArchive('traces',key)}]);
+  }
   function talk(){if(!state.traces.statement){say('화영','“뭐가 궁금해요?”',[{label:'“결계 밖에는 뭐가 있어?”',action:()=>playerSpeak('저 결계 너머엔 뭐가 있어?',()=>{state.traces.statement=true;state.unlocked.house=true;state.unlocked.barrier=true;updateStatus();say('화영','“몰라요. 저는 밖에 나가본 적 없어요.”',[{label:'계속 이유를 캐묻는다',action:()=>lockBarrier('push')},{label:'더 묻지 않는다',primary:true,action:()=>lockBarrier('wait')}])})}]);return}if(state.decoded&&!state.memory){confront();return}if(state.decisions.barrier==='push'){say('화영','“…아까 그 이야기는 더 하고 싶지 않아요.”');return}if(state.decisions.barrier==='wait'){say('화영','“아까 기다려줘서 고마웠어요.”',[{label:'“같이 조금 걸을래?”',action:()=>playerSpeak('같이 조금 걸을래? 계속 여기 서 있는 것도 그렇고.',()=>{state.trust+=1;updateStatus();say('화영','“…네. 잠깐이라면.”')})}]);return}say('화영','“오늘은 조용하네요.”')}
   function lockBarrier(value){if(state.decisions.barrier!==null)return;state.decisions.barrier=value;if(value==='push'){state.trust-=1;updateStatus();playerSpeak('정말 한 번도? 그런데 왜 그렇게 바로 대답해? 뭔가 알고 있는 것 같은데.',()=>say('화영','“…처음 보는 사람한테 그걸 왜 말해야 하죠?”'))}else{state.trust+=1;updateStatus();playerSpeak('…알겠어. 말하기 싫으면 지금은 안 해도 돼.',()=>say('화영','“…고마워요. 제 방에 있는 그림 정도는 봐도 돼요.”'))}}
   function confront(){if(state.decisions.confront!==null){say('화영',state.decisions.confront==='accuse'?'“그 이야기는 이제 그만했으면 좋겠어요.”':'“…아직 설명은 못 하겠지만, 기다려줘서 고마워요.”');return}say('화영','“아까부터 할 말 있어 보여요.”',[{label:'[해독] “거짓말한 거야?”',action:()=>lockConfront('accuse')},{label:'[해독] “말하기 힘들면 기다릴게.”',primary:true,action:()=>lockConfront('wait')}])}
@@ -40,6 +116,7 @@
   function loadGame(){const raw=safeStorageGet(SAVE_KEY);if(!raw)return false;try{const loaded=JSON.parse(raw);const base=freshState();state={...base,...loaded,traces:{...(loaded.traces||{})},unlocked:{...base.unlocked,...(loaded.unlocked||{})},decisions:{...base.decisions,...(loaded.decisions||{})}};return true}catch(_){return false}}
   function updateContinueButton(){$('continueBtn').disabled=!safeStorageGet(SAVE_KEY)}
   function startNewGame(){state=freshState();showScreen('game');renderScene();say('화영','“처음 보는 사람이네요. 길을 잃었어요?”',[{label:'“여긴 어디야?”',primary:true,action:()=>playerSpeak('여긴… 어디야?',()=>say('화영','“꿈이라고 생각하면 편해요.”'))},{label:'주변부터 살펴본다',action:()=>playerThink('…일단 주변부터 확인해보자.')}])}
+  document.querySelector('.dialog').addEventListener('click',advanceDialogue);
   $('newBtn').addEventListener('click',startNewGame);
   $('continueBtn').addEventListener('click',()=>{if(!loadGame()){alert('저장 데이터가 없습니다.');updateContinueButton();return}showScreen('game');renderScene();say('일운','저장된 꿈의 흐름을 이어간다.')});
   $('talkBtn').addEventListener('click',talk);
