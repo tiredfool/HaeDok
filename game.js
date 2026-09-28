@@ -1,6 +1,6 @@
 'use strict';
 
-window.addEventListener('DOMContentLoaded', () => {
+(function bootHaeDok(){
   const SAVE_KEY = 'haedok-first-night-v2';
   const $ = (id) => document.getElementById(id);
   const traces = {
@@ -45,4 +45,4 @@ window.addEventListener('DOMContentLoaded', () => {
   $('saveBtn').addEventListener('click',saveGame);
   $('titleBtn').addEventListener('click',()=>showScreen('title'));
   updateContinueButton();
-});
+})();
