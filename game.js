@@ -11,6 +11,93 @@
   };
   function freshState(){return{loc:'plaza',trust:0,traces:{},memory:false,decoded:false,unlocked:{plaza:true,house:false,barrier:false},decisions:{barrier:null,confront:null},tab:'traces'};}
   let state=freshState();
+  const HWAYEONG_PORTRAITS={
+    normal:'./assets/characters/화영(일반).png',
+    anxious:'./assets/characters/화영(불안).png',
+    grateful:'./assets/characters/화영(감사).png'
+  };
+  const portraitCache=new Map();
+  let hwayeongMood='normal';
+
+  function colorDistance(data,index,bg){
+    const dr=data[index]-bg[0], dg=data[index+1]-bg[1], db=data[index+2]-bg[2];
+    return Math.sqrt(dr*dr+dg*dg+db*db);
+  }
+  function removeConnectedBackground(image){
+    const canvas=document.createElement('canvas');
+    canvas.width=image.naturalWidth;
+    canvas.height=image.naturalHeight;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(image,0,0);
+    const frame=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const data=frame.data, w=canvas.width, h=canvas.height;
+    const corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]];
+    const bg=[0,0,0];
+    corners.forEach(([x,y])=>{
+      const n=(y*w+x)*4;
+      bg[0]+=data[n]; bg[1]+=data[n+1]; bg[2]+=data[n+2];
+    });
+    bg[0]/=4; bg[1]/=4; bg[2]/=4;
+
+    const visited=new Uint8Array(w*h);
+    const queue=new Int32Array(w*h);
+    let head=0,tail=0;
+    function tryAdd(x,y){
+      if(x<0||y<0||x>=w||y>=h)return;
+      const p=y*w+x;
+      if(visited[p])return;
+      const n=p*4;
+      if(data[n+3]===0 || colorDistance(data,n,bg)<=38){
+        visited[p]=1;
+        queue[tail++]=p;
+      }
+    }
+    for(let x=0;x<w;x++){tryAdd(x,0);tryAdd(x,h-1)}
+    for(let y=0;y<h;y++){tryAdd(0,y);tryAdd(w-1,y)}
+    while(head<tail){
+      const p=queue[head++];
+      const x=p%w, y=(p/w)|0;
+      data[p*4+3]=0;
+      tryAdd(x+1,y);tryAdd(x-1,y);tryAdd(x,y+1);tryAdd(x,y-1);
+    }
+    ctx.putImageData(frame,0,0);
+    return canvas.toDataURL('image/webp',0.92);
+  }
+  function loadPortrait(mood){
+    if(portraitCache.has(mood))return Promise.resolve(portraitCache.get(mood));
+    return new Promise((resolve,reject)=>{
+      const source=new Image();
+      source.onload=()=>{
+        try{
+          const cleaned=removeConnectedBackground(source);
+          portraitCache.set(mood,cleaned);
+          resolve(cleaned);
+        }catch(error){reject(error)}
+      };
+      source.onerror=()=>reject(new Error('Portrait not found: '+HWAYEONG_PORTRAITS[mood]));
+      source.src=HWAYEONG_PORTRAITS[mood];
+    });
+  }
+  function setHwayeongMood(mood='normal'){
+    hwayeongMood=mood;
+    const sprite=$('hwayeongSprite');
+    if(!sprite)return;
+    if(state.loc!=='plaza'){
+      sprite.classList.remove('visible');
+      return;
+    }
+    loadPortrait(mood).then(src=>{
+      if(hwayeongMood!==mood || state.loc!=='plaza')return;
+      sprite.src=src;
+      sprite.classList.add('visible');
+    }).catch(()=>{
+      sprite.classList.remove('visible');
+    });
+  }
+  function hwayeongSay(text,mood='normal',options=[],onAdvance=null){
+    setHwayeongMood(mood);
+    say('화영',text,options,onAdvance);
+  }
   function safeStorageGet(key){try{return localStorage.getItem(key)}catch(_){return null}}
   function safeStorageSet(key,value){try{localStorage.setItem(key,value);return true}catch(_){return false}}
   function showScreen(id){document.querySelectorAll('.screen').forEach(el=>el.classList.remove('on'));const target=$(id);if(target)target.classList.add('on')}
@@ -89,7 +176,7 @@
   function introFor(loc){if(loc==='house')return'화영의 방. 벽에 낯선 풍경의 그림이 걸려 있다.';if(loc==='barrier')return'결계 가까이 다가가자 표면에 긴 긁힌 자국이 보인다.';return'조용한 광장. 화영이 가로등 아래 서 있다.'}
   function renderPlaces(){const box=$('places');box.innerHTML='';[['plaza','광장'],['house','화영의 집'],['barrier','결계']].forEach(([id,label])=>{const button=document.createElement('button');button.type='button';button.className='place'+(state.loc===id?' on':'');button.disabled=!state.unlocked[id];button.textContent=(button.disabled?'🔒 ':'')+label;button.addEventListener('click',()=>{state.loc=id;closeArchive();renderScene();say('일운',introFor(id),id==='plaza'?[{label:'화영과 이야기한다',action:talk}]:[])});box.appendChild(button)})}
   function makeHotspot(key,left,top){const button=document.createElement('button');button.type='button';button.className='hot'+(state.traces[key]?' done':'');button.style.left=left;button.style.top=top;button.textContent='?';button.setAttribute('aria-label',traces[key].title);button.addEventListener('click',()=>inspect(key));$('hots').appendChild(button)}
-  function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div><div class="char"></div>';makeHotspot('clock','31%','28%')}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%')}updateStatus()}
+  function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div><div class="char portrait-fallback"></div>';makeHotspot('clock','31%','28%');setHwayeongMood(hwayeongMood)}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%');$('hwayeongSprite').classList.remove('visible')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%');$('hwayeongSprite').classList.remove('visible')}updateStatus()}
   function inspect(key){
     state.traces[key]=true;
     renderScene();
@@ -102,10 +189,10 @@
     }
     say('일운','흔적 발견 — '+traces[key].title,[{label:'기록에서 자세히 본다',primary:true,action:()=>openArchive('traces',key)}]);
   }
-  function talk(){if(!state.traces.statement){say('화영','“뭐가 궁금해요?”',[{label:'“결계 밖에는 뭐가 있어?”',action:()=>playerSpeak('저 결계 너머엔 뭐가 있어?',()=>{state.traces.statement=true;state.unlocked.house=true;state.unlocked.barrier=true;updateStatus();say('화영','“몰라요. 저는 밖에 나가본 적 없어요.”',[{label:'계속 이유를 캐묻는다',action:()=>lockBarrier('push')},{label:'더 묻지 않는다',primary:true,action:()=>lockBarrier('wait')}])})}]);return}if(state.decoded&&!state.memory){confront();return}if(state.decisions.barrier==='push'){say('화영','“…아까 그 이야기는 더 하고 싶지 않아요.”');return}if(state.decisions.barrier==='wait'){say('화영','“아까 기다려줘서 고마웠어요.”',[{label:'“같이 조금 걸을래?”',action:()=>playerSpeak('같이 조금 걸을래? 계속 여기 서 있는 것도 그렇고.',()=>{state.trust+=1;updateStatus();say('화영','“…네. 잠깐이라면.”')})}]);return}say('화영','“오늘은 조용하네요.”')}
-  function lockBarrier(value){if(state.decisions.barrier!==null)return;state.decisions.barrier=value;if(value==='push'){state.trust-=1;updateStatus();playerSpeak('정말 한 번도? 그런데 왜 그렇게 바로 대답해? 뭔가 알고 있는 것 같은데.',()=>say('화영','“…처음 보는 사람한테 그걸 왜 말해야 하죠?”'))}else{state.trust+=1;updateStatus();playerSpeak('…알겠어. 말하기 싫으면 지금은 안 해도 돼.',()=>say('화영','“…고마워요. 제 방에 있는 그림 정도는 봐도 돼요.”'))}}
-  function confront(){if(state.decisions.confront!==null){say('화영',state.decisions.confront==='accuse'?'“그 이야기는 이제 그만했으면 좋겠어요.”':'“…아직 설명은 못 하겠지만, 기다려줘서 고마워요.”');return}say('화영','“아까부터 할 말 있어 보여요.”',[{label:'[해독] “거짓말한 거야?”',action:()=>lockConfront('accuse')},{label:'[해독] “말하기 힘들면 기다릴게.”',primary:true,action:()=>lockConfront('wait')}])}
-  function lockConfront(value){if(state.decisions.confront!==null)return;state.decisions.confront=value;if(value==='accuse'){state.trust-=2;updateStatus();playerSpeak('밖에 나간 적 없다면서. 그럼 그 그림은 뭐야? 나한테 거짓말한 거야?',()=>say('화영','“…그렇게 생각하고 싶으면 그렇게 생각해요.”'))}else{state.trust+=2;updateStatus();playerSpeak('말하기 힘들면 지금은 안 해도 돼. 그냥… 네가 말할 수 있을 때까지 기다릴게.',()=>say('화영','“…본 적은 없어요. 그런데 기억나요. 저 바깥 풍경이.”',[{label:'기억을 복원한다',primary:true,action:()=>{state.memory=true;updateStatus();say('기억','「보지 못한 풍경」이 복원되었다.',[{label:'기억 확인',primary:true,action:()=>openArchive('memories')}])}}]))}}
+  function talk(){if(!state.traces.statement){hwayeongSay('“뭐가 궁금해요?”','normal',[{label:'“결계 밖에는 뭐가 있어?”',action:()=>playerSpeak('저 결계 너머엔 뭐가 있어?',()=>{state.traces.statement=true;state.unlocked.house=true;state.unlocked.barrier=true;updateStatus();hwayeongSay('“몰라요. 저는 밖에 나가본 적 없어요.”','anxious',[{label:'계속 이유를 캐묻는다',action:()=>lockBarrier('push')},{label:'더 묻지 않는다',primary:true,action:()=>lockBarrier('wait')}])})}]);return}if(state.decoded&&!state.memory){confront();return}if(state.decisions.barrier==='push'){hwayeongSay('“…아까 그 이야기는 더 하고 싶지 않아요.”','anxious');return}if(state.decisions.barrier==='wait'){hwayeongSay('“아까 기다려줘서 고마웠어요.”','grateful',[{label:'“같이 조금 걸을래?”',action:()=>playerSpeak('같이 조금 걸을래? 계속 여기 서 있는 것도 그렇고.',()=>{state.trust+=1;updateStatus();hwayeongSay('“…네. 잠깐이라면.”','grateful')})}]);return}hwayeongSay('“오늘은 조용하네요.”','normal')}
+  function lockBarrier(value){if(state.decisions.barrier!==null)return;state.decisions.barrier=value;if(value==='push'){state.trust-=1;updateStatus();playerSpeak('정말 한 번도? 그런데 왜 그렇게 바로 대답해? 뭔가 알고 있는 것 같은데.',()=>hwayeongSay('“…처음 보는 사람한테 그걸 왜 말해야 하죠?”','anxious'))}else{state.trust+=1;updateStatus();playerSpeak('…알겠어. 말하기 싫으면 지금은 안 해도 돼.',()=>hwayeongSay('“…고마워요. 제 방에 있는 그림 정도는 봐도 돼요.”','grateful'))}}
+  function confront(){if(state.decisions.confront!==null){hwayeongSay(state.decisions.confront==='accuse'?'“그 이야기는 이제 그만했으면 좋겠어요.”':'“…아직 설명은 못 하겠지만, 기다려줘서 고마워요.”',state.decisions.confront==='accuse'?'anxious':'grateful');return}hwayeongSay('“아까부터 할 말 있어 보여요.”','anxious',[{label:'[해독] “거짓말한 거야?”',action:()=>lockConfront('accuse')},{label:'[해독] “말하기 힘들면 기다릴게.”',primary:true,action:()=>lockConfront('wait')}])}
+  function lockConfront(value){if(state.decisions.confront!==null)return;state.decisions.confront=value;if(value==='accuse'){state.trust-=2;updateStatus();playerSpeak('밖에 나간 적 없다면서. 그럼 그 그림은 뭐야? 나한테 거짓말한 거야?',()=>hwayeongSay('“…그렇게 생각하고 싶으면 그렇게 생각해요.”','anxious'))}else{state.trust+=2;updateStatus();playerSpeak('말하기 힘들면 지금은 안 해도 돼. 그냥… 네가 말할 수 있을 때까지 기다릴게.',()=>hwayeongSay('“…본 적은 없어요. 그런데 기억나요. 저 바깥 풍경이.”','anxious',[{label:'기억을 복원한다',primary:true,action:()=>{state.memory=true;updateStatus();say('기억','「보지 못한 풍경」이 복원되었다.',[{label:'기억 확인',primary:true,action:()=>openArchive('memories')}])}}]))}}
   function openArchive(tab,detailKey=null){state.tab=tab;$('archive').classList.remove('hide');renderArchive(detailKey)}
   function closeArchive(){$('archive').classList.add('hide')}
   function renderArchive(detailKey=null){const box=$('archive');box.innerHTML='<div class="tabs"><button type="button" class="tab '+(state.tab==='traces'?'on':'')+'" data-tab="traces">흔적</button><button type="button" class="tab '+(state.tab==='decode'?'on':'')+'" data-tab="decode">해독</button><button type="button" class="tab '+(state.tab==='memories'?'on':'')+'" data-tab="memories">기억</button><button type="button" class="tab '+(state.tab==='decisions'?'on':'')+'" data-tab="decisions">결정</button><button type="button" id="closeArc" class="btn">닫기</button></div><div id="arcBody"></div>';box.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{state.tab=button.dataset.tab;renderArchive()}));$('closeArc').addEventListener('click',closeArchive);if(detailKey){renderTraceDetail(detailKey);return}const body=$('arcBody');if(state.tab==='traces'){const keys=Object.keys(state.traces).filter(key=>state.traces[key]);if(!keys.length){body.innerHTML='<p class="muted">아직 발견한 흔적이 없다.</p>';return}keys.forEach(key=>{const button=document.createElement('button');button.type='button';button.className='item';button.innerHTML='<strong>'+traces[key].title+'</strong><small>'+traces[key].summary+'</small>';button.addEventListener('click',()=>renderTraceDetail(key));body.appendChild(button)});return}if(state.tab==='decode'){renderDecode(body);return}if(state.tab==='memories'){body.innerHTML=state.memory?'<div class="detail"><p class="eyebrow">MEMORY 01</p><h3>보지 못한 풍경</h3><div class="cg"><strong>결계 너머를 바라보는 화영<br><small>“본 적은 없는데… 기억나요.”</small></strong></div><p class="muted">설명할 수 없던 모순이 하나의 장면으로 형태를 갖췄다.</p></div>':'<p class="muted">아직 복원된 기억이 없다.</p>';return}renderDecisions(body)}
@@ -115,7 +202,7 @@
   function saveGame(){const ok=safeStorageSet(SAVE_KEY,JSON.stringify(state));alert(ok?'저장했습니다.':'이 브라우저에서는 저장 기능을 사용할 수 없습니다.');updateContinueButton()}
   function loadGame(){const raw=safeStorageGet(SAVE_KEY);if(!raw)return false;try{const loaded=JSON.parse(raw);const base=freshState();state={...base,...loaded,traces:{...(loaded.traces||{})},unlocked:{...base.unlocked,...(loaded.unlocked||{})},decisions:{...base.decisions,...(loaded.decisions||{})}};return true}catch(_){return false}}
   function updateContinueButton(){$('continueBtn').disabled=!safeStorageGet(SAVE_KEY)}
-  function startNewGame(){state=freshState();showScreen('game');renderScene();say('화영','“처음 보는 사람이네요. 길을 잃었어요?”',[{label:'“여긴 어디야?”',primary:true,action:()=>playerSpeak('여긴… 어디야?',()=>say('화영','“꿈이라고 생각하면 편해요.”'))},{label:'주변부터 살펴본다',action:()=>playerThink('…일단 주변부터 확인해보자.')}])}
+  function startNewGame(){state=freshState();hwayeongMood='normal';showScreen('game');renderScene();hwayeongSay('“처음 보는 사람이네요. 길을 잃었어요?”','normal',[{label:'“여긴 어디야?”',primary:true,action:()=>playerSpeak('여긴… 어디야?',()=>hwayeongSay('“꿈이라고 생각하면 편해요.”','normal'))},{label:'주변부터 살펴본다',action:()=>playerThink('…일단 주변부터 확인해보자.')}])}
   document.querySelector('.dialog').addEventListener('click',advanceDialogue);
   $('newBtn').addEventListener('click',startNewGame);
   $('continueBtn').addEventListener('click',()=>{if(!loadGame()){alert('저장 데이터가 없습니다.');updateContinueButton();return}showScreen('game');renderScene();say('일운','저장된 꿈의 흐름을 이어간다.')});
