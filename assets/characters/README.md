@@ -1,0 +1,1 @@
+Place Hwayeong standing sprites here:\n- 화영(일반).png\n- 화영(불안).png\n- 화영(감사).png\n
