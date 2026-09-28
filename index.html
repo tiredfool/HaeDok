@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>해독 — First Night</title>
+<style>
+:root{--bg:#0d1117;--panel:#171d25;--soft:#202834;--line:#33404c;--txt:#eef3f6;--muted:#9eabb5;--accent:#b8a6d7}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(#111823,#0d1117);color:var(--txt);font-family:system-ui,"Noto Sans KR",sans-serif}
+button{font:inherit;color:inherit}.screen{display:none;min-height:100vh}.screen.on{display:block}
+.title{display:grid;place-items:center;padding:24px}.card{width:min(680px,100%);border:1px solid var(--line);border-radius:24px;padding:38px;background:rgba(23,29,37,.94)}
+.eyebrow{font-size:12px;letter-spacing:.16em;color:var(--muted);margin:0 0 8px}.card h1{font-size:72px;margin:0 0 10px}.muted{color:var(--muted);line-height:1.7}
+.btn{border:1px solid var(--line);background:var(--soft);border-radius:12px;min-height:44px;padding:9px 13px;cursor:pointer}.btn:hover{border-color:var(--accent)}.primary{background:#2b2438;border-color:#766491}
+.row{display:flex;gap:8px;flex-wrap:wrap}.game{max-width:1200px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 9px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:12px}.scene{position:relative;min-height:460px;overflow:hidden;border:1px solid var(--line);border-radius:20px;background:linear-gradient(#202a3a,#3b4752 62%,#182028)}
+.moon{position:absolute;width:75px;height:75px;border-radius:50%;right:8%;top:8%;background:#e7eaec;opacity:.7}.ground{position:absolute;left:-8%;right:-8%;bottom:-70px;height:230px;border-radius:50% 50% 0 0;background:#172027}
+.house{position:absolute;left:10%;bottom:105px;width:180px;height:150px;background:#34404a}.char{position:absolute;right:18%;bottom:90px;width:110px;height:240px;border-radius:50% 50% 15px 15px;background:linear-gradient(#d7d0c7 0 32%,#717c86 32%)}
+.room{position:absolute;inset:12% 8% 18%;background:#303945;border:1px solid #495663;border-radius:10px}.painting{position:absolute;left:18%;top:20%;width:180px;height:120px;border:7px solid #5c5146;background:linear-gradient(145deg,#627681,#1d262d)}
+.barrier{position:absolute;right:5%;top:15%;width:33%;height:70%;border-left:2px solid rgba(230,240,250,.55);border-radius:50%}.hot{position:absolute;min-width:48px;min-height:48px;border-radius:50%;border:1px dashed #d8dde2;background:#11182099;color:#fff;cursor:pointer}.hot.done{opacity:.45;border-style:solid}
+.dialog{margin-top:10px;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:14px}.speaker{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}.line{min-height:58px;line-height:1.7}.choices{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.side,.archive{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:12px}.side h3{font-size:13px}.place{width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;padding:10px 2px;cursor:pointer}.place:first-of-type{border-top:0}.place:disabled{opacity:.35}.place.on{color:#d5c4f0;font-weight:800}
+.archive{margin-top:10px}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tab{border:1px solid var(--line);border-radius:999px;background:transparent;padding:6px 10px}.tab.on{border-color:var(--accent);background:#2b2438}
+.item{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:10px 0;cursor:pointer}.item small{display:block;color:var(--muted);margin-top:4px}.detail{border:1px solid var(--line);border-radius:12px;padding:12px}.note{margin-top:9px;font-style:italic;color:#cfd6dc}.cg{height:180px;border-radius:12px;background:linear-gradient(145deg,#5c6977,#222a34);display:flex;align-items:flex-end;padding:14px;margin-top:10px}
+.hide{display:none!important}@media(max-width:700px){.layout{grid-template-columns:1fr}.scene{min-height:360px}.card h1{font-size:54px}}
+</style>
+</head>
+<body>
+<section id="title" class="screen title on"><div class="card"><p class="eyebrow">MYSTERY ROMANCE VISUAL NOVEL</p><h1>해독</h1><p class="muted">상처를 가진 사람들이 머무는 꿈속 마을.<br>말과 흔적을 따라 한 사람의 기억을 해독한다.</p><div class="row"><button id="newBtn" class="btn primary">새 게임</button><button id="continueBtn" class="btn">이어하기</button></div><p class="muted">Prototype · First Night</p></div></section>
+<section id="game" class="screen game">
+<div class="top"><div><p class="eyebrow">FIRST NIGHT</p><h2 id="locTitle">꿈속 광장</h2></div><div class="chips"><span id="traceStat" class="chip">흔적 0</span><span id="memoryStat" class="chip">기억 0</span><span id="trustStat" class="chip">화영 · 낯섦</span></div></div>
+<div class="layout"><main><div id="scene" class="scene"><div class="moon"></div><div id="art"></div><div id="hots"></div></div>
+<div class="dialog"><div id="speaker" class="speaker">—</div><div id="text" class="line">게임을 시작해 주세요.</div><div id="choices" class="choices"></div></div>
+<div class="row" style="margin-top:9px"><button id="talkBtn" class="btn">화영과 대화</button><button id="recordBtn" class="btn">기록</button><button id="saveBtn" class="btn">저장</button><button id="titleBtn" class="btn">타이틀</button></div>
+<div id="archive" class="archive hide"></div></main><aside class="side"><h3>꿈속 마을</h3><div id="places"></div><h3>현재 감각</h3><p id="hint" class="muted">화영과 먼저 이야기해보자.</p></aside></div></section>
+<script>
+(function(){
+var KEY='haedok-first-night-v1';
+function fresh(){return{loc:'plaza',trust:0,traces:{},memory:false,decoded:false,unlocked:{plaza:true,house:false,barrier:false},decisions:{barrier:null,confront:null},tab:'traces'}}
+var S=fresh();
+var T={
+clock:{title:'멈춘 시계',summary:'광장의 시계가 02시 17분에서 멈춰 있다.',detail:'바늘에는 먼지가 거의 없다. 오래 멈춘 물건이라기보다, 이 세계의 시간이 이 시각에서 고정된 것 같다.',note:'「시간이 멈춘 게 아니라, 누군가 세기를 포기한 것 같다.」'},
+statement:{title:'화영의 말',summary:'화영은 결계 밖에 나가본 적 없다고 말했다.',detail:'결계에 대한 질문이 끝나기도 전에 대답했다. 밖을 모른다기보다 그 이야기를 끝내고 싶어 하는 인상이 남았다.',note:'「정말 모르는 걸까, 아니면 기억하고 싶지 않은 걸까?」'},
+painting:{title:'결계 밖의 그림',summary:'화영의 방에 마을 바깥처럼 보이는 그림이 걸려 있다.',detail:'산의 능선과 무너진 표지판, 먼 곳의 불빛까지 구체적이다. 상상으로 그렸다고 하기엔 반복되는 디테일이 많다.',note:'「본 적 없는 곳을 이렇게 자세히 그릴 수 있을까?」'},
+scratch:{title:'결계의 긁힌 자국',summary:'결계 안쪽에서 바깥 방향으로 이어진 흔적이다.',detail:'무언가 밖에서 들어오려 한 흔적이 아니라, 안쪽에 있던 누군가가 바깥으로 나가려 했던 자국처럼 보인다.',note:'「결계는 우리를 지키는 걸까, 가두는 걸까?」'}
+};
+function q(id){return document.getElementById(id)}
+function show(id){document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('on')});q(id).classList.add('on')}
+function count(){return Object.keys(S.traces).filter(function(k){return S.traces[k]}).length}
+function status(){q('traceStat').textContent='흔적 '+count();q('memoryStat').textContent='기억 '+(S.memory?1:0);var r='낯섦';if(S.trust>=2)r='가까움';else if(S.trust>=1)r='조금 가까움';else if(S.trust<0)r='경계';q('trustStat').textContent='화영 · '+r;renderPlaces();hint()}
+function hint(){var h='마을을 직접 살펴보자.';if(!S.traces.statement)h='화영에게 결계에 대해 물어볼 수 있다.';else if(!(S.traces.statement&&S.traces.painting))h='화영의 말과 맞지 않는 흔적이 있을지도 모른다.';else if(!S.decoded)h='기록의 해독 탭에서 두 흔적을 비교해보자.';else if(!S.memory)h='해독한 가설을 화영에게 확인해보자.';else h='첫 번째 기억이 복원됐다.';q('hint').textContent=h}
+function say(name,text,opts){q('speaker').textContent=name;q('text').textContent=text;var box=q('choices');box.innerHTML='';(opts||[]).forEach(function(o){var b=document.createElement('button');b.className='btn'+(o.key?' primary':'');b.textContent=o.label;b.onclick=function(){box.innerHTML='';o.go()};box.appendChild(b)})}
+function renderPlaces(){var box=q('places');box.innerHTML='';[['plaza','광장'],['house','화영의 집'],['barrier','결계']].forEach(function(p){var b=document.createElement('button');b.className='place'+(S.loc===p[0]?' on':'');b.disabled=!S.unlocked[p[0]];b.textContent=(b.disabled?'🔒 ':'')+p[1];b.onclick=function(){S.loc=p[0];closeArchive();renderScene();say('일운',intro(p[0]),p[0]==='plaza'?[{label:'화영과 이야기한다',go:talk}]:[])};box.appendChild(b)})}
+function intro(loc){if(loc==='house')return '화영의 방. 벽에 낯선 풍경의 그림이 걸려 있다.';if(loc==='barrier')return '결계 가까이 다가가자 표면에 긴 긁힌 자국이 보인다.';return '조용한 광장. 화영이 가로등 아래 서 있다.'}
+function hot(key,left,top){var b=document.createElement('button');b.className='hot'+(S.traces[key]?' done':'');b.style.left=left;b.style.top=top;b.textContent='?';b.onclick=function(){inspect(key)};q('hots').appendChild(b)}
+function renderScene(){var a=q('art');q('hots').innerHTML='';q('locTitle').textContent=S.loc==='plaza'?'꿈속 광장':S.loc==='house'?'화영의 집':'결계';if(S.loc==='plaza'){a.innerHTML='<div class="ground"></div><div class="house"></div><div class="char"></div>';hot('clock','31%','28%')}if(S.loc==='house'){a.innerHTML='<div class="room"><div class="painting"></div></div>';hot('painting','30%','30%')}if(S.loc==='barrier'){a.innerHTML='<div class="ground"></div><div class="barrier"></div>';hot('scratch','75%','48%')}status()}
+function inspect(key){if(!S.traces[key])S.traces[key]=true;renderScene();say('일운','흔적 발견 — '+T[key].title,[{label:'기록에서 자세히 본다',key:true,go:function(){openArchive('traces',key)}}]);if(key==='painting'&&S.traces.statement&&!S.decoded)setTimeout(function(){say('일운','잠깐. 밖에 나간 적 없다는 말과 이 그림은 서로 맞지 않는다.',[{label:'두 흔적을 비교한다',key:true,go:function(){openArchive('decode')}}])},180)}
+function talk(){if(!S.traces.statement){say('화영','“뭐가 궁금해요?”',[{label:'“결계 밖에는 뭐가 있어?”',go:function(){S.traces.statement=true;S.unlocked.house=true;S.unlocked.barrier=true;status();say('화영','“몰라요. 저는 밖에 나가본 적 없어요.”',[{label:'계속 이유를 캐묻는다',go:function(){lockBarrier('push')}},{label:'더 묻지 않는다',key:true,go:function(){lockBarrier('wait')}}])}}]);return}if(S.decoded&&!S.memory){confront();return}if(S.decisions.barrier==='push'){say('화영','“…아까 그 이야기는 더 하고 싶지 않아요.”');return}if(S.decisions.barrier==='wait'){say('화영','“아까 기다려줘서 고마웠어요.”',[{label:'“같이 조금 걸을래?”',go:function(){S.trust++;status();say('화영','“…네. 잠깐이라면.”')}}]);return}say('화영','“오늘은 조용하네요.”')}
+function lockBarrier(v){if(S.decisions.barrier!==null)return;S.decisions.barrier=v;if(v==='push'){S.trust--;say('화영','“…처음 보는 사람한테 그걸 왜 말해야 하죠?”')}else{S.trust++;say('화영','“…고마워요. 제 방에 있는 그림 정도는 봐도 돼요.”')}status()}
+function confront(){if(S.decisions.confront!==null){say('화영',S.decisions.confront==='accuse'?'“그 이야기는 이제 그만했으면 좋겠어요.”':'“…아직 설명은 못 하겠지만, 기다려줘서 고마워요.”');return}say('화영','“아까부터 할 말 있어 보여요.”',[{label:'[해독] “거짓말한 거야?”',go:function(){lockConfront('accuse')}},{label:'[해독] “말하기 힘들면 기다릴게.”',key:true,go:function(){lockConfront('wait')}}])}
+function lockConfront(v){if(S.decisions.confront!==null)return;S.decisions.confront=v;if(v==='accuse'){S.trust-=2;say('화영','“…그렇게 생각하고 싶으면 그렇게 생각해요.”')}else{S.trust+=2;say('화영','“…본 적은 없어요. 그런데 기억나요. 저 바깥 풍경이.”',[{label:'기억을 복원한다',key:true,go:function(){S.memory=true;status();say('기억','「보지 못한 풍경」이 복원되었다.',[{label:'기억 확인',key:true,go:function(){openArchive('memories')}}])}}])}status()}
+function openArchive(tab,key){S.tab=tab;q('archive').classList.remove('hide');renderArchive(key)}
+function closeArchive(){q('archive').classList.add('hide')}
+function renderArchive(detailKey){var box=q('archive');box.innerHTML='<div class="tabs"><button class="tab '+(S.tab==='traces'?'on':'')+'" data-t="traces">흔적</button><button class="tab '+(S.tab==='decode'?'on':'')+'" data-t="decode">해독</button><button class="tab '+(S.tab==='memories'?'on':'')+'" data-t="memories">기억</button><button class="tab '+(S.tab==='decisions'?'on':'')+'" data-t="decisions">결정</button><button id="closeArc" class="btn">닫기</button></div><div id="arcBody"></div>';box.querySelectorAll('[data-t]').forEach(function(b){b.onclick=function(){S.tab=b.getAttribute('data-t');renderArchive()}});q('closeArc').onclick=closeArchive;if(detailKey){traceDetail(detailKey);return}var body=q('arcBody');if(S.tab==='traces'){var ks=Object.keys(S.traces).filter(function(k){return S.traces[k]});if(!ks.length){body.innerHTML='<p class="muted">아직 발견한 흔적이 없다.</p>';return}ks.forEach(function(k){var b=document.createElement('button');b.className='item';b.innerHTML='<strong>'+T[k].title+'</strong><small>'+T[k].summary+'</small>';b.onclick=function(){traceDetail(k)};body.appendChild(b)})}else if(S.tab==='decode'){decodeView(body)}else if(S.tab==='memories'){body.innerHTML=S.memory?'<div class="detail"><p class="eyebrow">MEMORY 01</p><h3>보지 못한 풍경</h3><div class="cg"><strong>결계 너머를 바라보는 화영<br><small>“본 적은 없는데… 기억나요.”</small></strong></div><p class="muted">설명할 수 없던 모순이 하나의 장면으로 형태를 갖췄다.</p></div>':'<p class="muted">아직 복원된 기억이 없다.</p>'}else{decisionView(body)}}
+function traceDetail(k){var body=q('arcBody');body.innerHTML='<button id="backList" class="btn">← 목록</button><div class="detail" style="margin-top:10px"><h3>'+T[k].title+'</h3><p class="muted">'+T[k].detail+'</p><div class="note">'+T[k].note+'</div></div>';q('backList').onclick=function(){renderArchive()}}
+function decodeView(body){if(!(S.traces.statement&&S.traces.painting)){body.innerHTML='<p class="muted">서로 비교할 흔적이 아직 부족하다.</p>';return}if(S.decoded){body.innerHTML='<div class="detail"><h3>해독 완료</h3><p>화영은 직접 결계 밖을 본 적은 없지만, 바깥에 대한 기억을 가지고 있을 가능성이 있다.</p><div class="note">「모순은 거짓말의 증거가 아니라 잃어버린 기억의 흔적일 수도 있다.」</div></div>';return}body.innerHTML='<div class="detail"><h3>모순</h3><p>① 화영은 밖에 나간 적이 없다고 말했다.<br>② 그런데 결계 밖의 풍경을 자세히 그렸다.</p><button id="decodeOk" class="btn primary">“직접 본 적은 없어도 바깥에 대한 기억이 있다.”</button></div>';q('decodeOk').onclick=function(){S.decoded=true;renderArchive();say('일운','이 가설을 화영에게 확인해볼 수 있겠다.')}}
+function decisionView(body){var h='';if(S.decisions.barrier)h+='<div class="detail"><strong>결계에 대해 물었을 때</strong><p class="muted">'+(S.decisions.barrier==='push'?'계속 이유를 캐물었다.':'화영이 말할 때까지 기다리기로 했다.')+'</p></div>';if(S.decisions.confront)h+='<div class="detail" style="margin-top:8px"><strong>그림의 모순을 발견한 뒤</strong><p class="muted">'+(S.decisions.confront==='accuse'?'화영이 거짓말했다고 의심했다.':'설명하기 힘들다면 기다리겠다고 말했다.')+'</p></div>';body.innerHTML=h||'<p class="muted">아직 확정된 결정이 없다.</p>'}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));alert('저장했습니다.')}
+function load(){var raw=localStorage.getItem(KEY);if(!raw)return false;try{S=Object.assign(fresh(),JSON.parse(raw));S.unlocked=Object.assign(fresh().unlocked,S.unlocked||{});S.decisions=Object.assign(fresh().decisions,S.decisions||{});return true}catch(e){return false}}
+q('newBtn').onclick=function(){S=fresh();show('game');renderScene();say('화영','“처음 보는 사람이네요. 길을 잃었어요?”',[{label:'“여긴 어디야?”',key:true,go:function(){say('화영','“꿈이라고 생각하면 편해요.”')}},{label:'주변부터 살펴본다',go:function(){say('일운','우선 광장부터 살펴보기로 했다.')}}])}
+q('continueBtn').onclick=function(){if(!load()){alert('저장 데이터가 없습니다.');return}show('game');renderScene();say('일운','저장된 꿈의 흐름을 이어간다.')}
+q('talkBtn').onclick=talk;q('recordBtn').onclick=function(){openArchive('traces')};q('saveBtn').onclick=save;q('titleBtn').onclick=function(){show('title')};
+q('continueBtn').disabled=!localStorage.getItem(KEY);
+})();
+</script>
+</body>
+</html>
