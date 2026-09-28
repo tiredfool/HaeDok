@@ -24,7 +24,6 @@
     .item{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:10px 0;cursor:pointer}.item small{display:block;color:var(--muted);margin-top:4px}.detail{border:1px solid var(--line);border-radius:12px;padding:12px}.note{margin-top:9px;font-style:italic;color:#cfd6dc}.cg{height:180px;border-radius:12px;background:linear-gradient(145deg,#5c6977,#222a34);display:flex;align-items:flex-end;padding:14px;margin-top:10px}
     .hide{display:none!important}@media(max-width:700px){.layout{grid-template-columns:1fr}.scene{min-height:360px}.card h1{font-size:54px}}
   </style>
-  <script src="./game.js" defer></script>
 </head>
 <body>
   <section id="title" class="screen title on"><div class="card"><p class="eyebrow">MYSTERY ROMANCE VISUAL NOVEL</p><h1>해독</h1><p class="muted">상처를 가진 사람들이 머무는 꿈속 마을.<br>말과 흔적을 따라 한 사람의 기억을 해독한다.</p><div class="row"><button id="newBtn" type="button" class="btn primary">새 게임</button><button id="continueBtn" type="button" class="btn">이어하기</button></div><p class="muted">Prototype · First Night</p></div></section>
@@ -32,5 +31,6 @@
     <div class="top"><div><p class="eyebrow">FIRST NIGHT</p><h2 id="locTitle">꿈속 광장</h2></div><div class="chips"><span id="traceStat" class="chip">흔적 0</span><span id="memoryStat" class="chip">기억 0</span><span id="trustStat" class="chip">화영 · 낯섦</span></div></div>
     <div class="layout"><main><div id="scene" class="scene"><div class="moon"></div><div id="art"></div><div id="hots"></div></div><div class="dialog"><div id="speaker" class="speaker">—</div><div id="text" class="line">게임을 시작해 주세요.</div><div id="choices" class="choices"></div></div><div class="row" style="margin-top:9px"><button id="talkBtn" type="button" class="btn">화영과 대화</button><button id="recordBtn" type="button" class="btn">기록</button><button id="saveBtn" type="button" class="btn">저장</button><button id="titleBtn" type="button" class="btn">타이틀</button></div><div id="archive" class="archive hide"></div></main><aside class="side"><h3>꿈속 마을</h3><div id="places"></div><h3>현재 감각</h3><p id="hint" class="muted">화영과 먼저 이야기해보자.</p></aside></div>
   </section>
+  <script src="./game.js?v=3"></script>
 </body>
 </html>
