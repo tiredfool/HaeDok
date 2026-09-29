@@ -30,39 +30,43 @@
     canvas.height=image.naturalHeight;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     ctx.drawImage(image,0,0);
+
     const frame=ctx.getImageData(0,0,canvas.width,canvas.height);
     const data=frame.data, w=canvas.width, h=canvas.height;
-    const corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]];
-    const bg=[0,0,0];
-    corners.forEach(([x,y])=>{
-      const n=(y*w+x)*4;
-      bg[0]+=data[n]; bg[1]+=data[n+1]; bg[2]+=data[n+2];
-    });
-    bg[0]/=4; bg[1]/=4; bg[2]/=4;
 
-    const visited=new Uint8Array(w*h);
-    const queue=new Int32Array(w*h);
-    let head=0,tail=0;
-    function tryAdd(x,y){
-      if(x<0||y<0||x>=w||y>=h)return;
-      const p=y*w+x;
-      if(visited[p])return;
+    // Estimate the flat source background from several border samples.
+    const samples=[];
+    const samplePoint=(x,y)=>{
+      const n=(y*w+x)*4;
+      samples.push([data[n],data[n+1],data[n+2]]);
+    };
+    const stepX=Math.max(1,Math.floor(w/12));
+    const stepY=Math.max(1,Math.floor(h/12));
+    for(let x=0;x<w;x+=stepX){samplePoint(x,0);samplePoint(x,h-1)}
+    for(let y=0;y<h;y+=stepY){samplePoint(0,y);samplePoint(w-1,y)}
+
+    const bg=[0,0,0];
+    samples.forEach(c=>{bg[0]+=c[0];bg[1]+=c[1];bg[2]+=c[2]});
+    bg[0]/=samples.length; bg[1]/=samples.length; bg[2]/=samples.length;
+
+    // Key out the same beige colour everywhere, not only pixels connected
+    // to the outer border. This removes background trapped between hair strands.
+    const clearDistance=20;
+    const featherDistance=38;
+    for(let p=0;p<w*h;p++){
       const n=p*4;
-      if(data[n+3]===0 || colorDistance(data,n,bg)<=38){
-        visited[p]=1;
-        queue[tail++]=p;
+      if(data[n+3]===0)continue;
+      const d=colorDistance(data,n,bg);
+      if(d<=clearDistance){
+        data[n+3]=0;
+      }else if(d<featherDistance){
+        const t=(d-clearDistance)/(featherDistance-clearDistance);
+        data[n+3]=Math.min(data[n+3],Math.round(255*t));
       }
     }
-    for(let x=0;x<w;x++){tryAdd(x,0);tryAdd(x,h-1)}
-    for(let y=0;y<h;y++){tryAdd(0,y);tryAdd(w-1,y)}
-    while(head<tail){
-      const p=queue[head++];
-      const x=p%w, y=(p/w)|0;
-      data[p*4+3]=0;
-      tryAdd(x+1,y);tryAdd(x-1,y);tryAdd(x,y+1);tryAdd(x,y-1);
-    }
+
     ctx.putImageData(frame,0,0);
-    return canvas.toDataURL('image/webp',0.92);
+    return canvas.toDataURL('image/webp',0.94);
   }
   function loadPortrait(mood){
     if(portraitCache.has(mood))return Promise.resolve(portraitCache.get(mood));
@@ -190,7 +194,7 @@
   function introFor(loc){if(loc==='house')return'화영의 방. 벽에 낯선 풍경의 그림이 걸려 있다.';if(loc==='barrier')return'결계 가까이 다가가자 표면에 긴 긁힌 자국이 보인다.';return'조용한 광장. 화영이 가로등 아래 서 있다.'}
   function renderPlaces(){const box=$('places');box.innerHTML='';[['plaza','광장'],['house','화영의 집'],['barrier','결계']].forEach(([id,label])=>{const button=document.createElement('button');button.type='button';button.className='place'+(state.loc===id?' on':'');button.disabled=!state.unlocked[id];button.textContent=(button.disabled?'🔒 ':'')+label;button.addEventListener('click',()=>{hideHwayeong();state.loc=id;closeArchive();renderScene();say('일운',introFor(id),id==='plaza'?[{label:'화영과 이야기한다',action:talk}]:[])});box.appendChild(button)})}
   function makeHotspot(key,left,top){const button=document.createElement('button');button.type='button';button.className='hot'+(state.traces[key]?' done':'');button.style.left=left;button.style.top=top;button.textContent='?';button.setAttribute('aria-label',traces[key].title);button.addEventListener('click',()=>inspect(key));$('hots').appendChild(button)}
-  function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div><div class="char portrait-fallback"></div>';makeHotspot('clock','31%','28%')}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%')}if(hwayeongOnStage)setHwayeongMood(hwayeongMood);else $('hwayeongSprite').classList.remove('visible');updateStatus()}
+  function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div>';makeHotspot('clock','31%','28%')}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%')}if(hwayeongOnStage)setHwayeongMood(hwayeongMood);else $('hwayeongSprite').classList.remove('visible');updateStatus()}
   function inspect(key){
     hideHwayeong();
     state.traces[key]=true;
