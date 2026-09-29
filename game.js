@@ -12,72 +12,22 @@
   function freshState(){return{loc:'plaza',trust:0,traces:{},memory:false,decoded:false,unlocked:{plaza:true,house:false,barrier:false},decisions:{barrier:null,confront:null},tab:'traces'};}
   let state=freshState();
   const HWAYEONG_PORTRAITS={
-    normal:'./assets/characters/화영(일반).png',
-    anxious:'./assets/characters/화영(불안).png',
-    grateful:'./assets/characters/화영(감사).png'
+    normal:'./assets/characters/화영(일반).png?v=9',
+    anxious:'./assets/characters/화영(불안).png?v=9',
+    grateful:'./assets/characters/화영(감사).png?v=9'
   };
   const portraitCache=new Map();
   let hwayeongMood='normal';
   let hwayeongOnStage=false;
 
-  function colorDistance(data,index,bg){
-    const dr=data[index]-bg[0], dg=data[index+1]-bg[1], db=data[index+2]-bg[2];
-    return Math.sqrt(dr*dr+dg*dg+db*db);
-  }
-  function removeConnectedBackground(image){
-    const canvas=document.createElement('canvas');
-    canvas.width=image.naturalWidth;
-    canvas.height=image.naturalHeight;
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(image,0,0);
-
-    const frame=ctx.getImageData(0,0,canvas.width,canvas.height);
-    const data=frame.data, w=canvas.width, h=canvas.height;
-
-    // Estimate the flat source background from several border samples.
-    const samples=[];
-    const samplePoint=(x,y)=>{
-      const n=(y*w+x)*4;
-      samples.push([data[n],data[n+1],data[n+2]]);
-    };
-    const stepX=Math.max(1,Math.floor(w/12));
-    const stepY=Math.max(1,Math.floor(h/12));
-    for(let x=0;x<w;x+=stepX){samplePoint(x,0);samplePoint(x,h-1)}
-    for(let y=0;y<h;y+=stepY){samplePoint(0,y);samplePoint(w-1,y)}
-
-    const bg=[0,0,0];
-    samples.forEach(c=>{bg[0]+=c[0];bg[1]+=c[1];bg[2]+=c[2]});
-    bg[0]/=samples.length; bg[1]/=samples.length; bg[2]/=samples.length;
-
-    // Key out the same beige colour everywhere, not only pixels connected
-    // to the outer border. This removes background trapped between hair strands.
-    const clearDistance=20;
-    const featherDistance=38;
-    for(let p=0;p<w*h;p++){
-      const n=p*4;
-      if(data[n+3]===0)continue;
-      const d=colorDistance(data,n,bg);
-      if(d<=clearDistance){
-        data[n+3]=0;
-      }else if(d<featherDistance){
-        const t=(d-clearDistance)/(featherDistance-clearDistance);
-        data[n+3]=Math.min(data[n+3],Math.round(255*t));
-      }
-    }
-
-    ctx.putImageData(frame,0,0);
-    return canvas.toDataURL('image/webp',0.94);
-  }
   function loadPortrait(mood){
     if(portraitCache.has(mood))return Promise.resolve(portraitCache.get(mood));
     return new Promise((resolve,reject)=>{
       const source=new Image();
       source.onload=()=>{
-        try{
-          const cleaned=removeConnectedBackground(source);
-          portraitCache.set(mood,cleaned);
-          resolve(cleaned);
-        }catch(error){reject(error)}
+        const src=HWAYEONG_PORTRAITS[mood];
+        portraitCache.set(mood,src);
+        resolve(src);
       };
       source.onerror=()=>reject(new Error('Portrait not found: '+HWAYEONG_PORTRAITS[mood]));
       source.src=HWAYEONG_PORTRAITS[mood];
