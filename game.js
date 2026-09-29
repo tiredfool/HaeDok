@@ -17,50 +17,86 @@
     grateful:'./assets/characters/화영(감사).png?v=9'
   };
   const portraitCache=new Map();
+  const portraitLoads=new Map();
+  let portraitsReady=false;
+  let enteringGame=false;
   let hwayeongMood='normal';
   let hwayeongOnStage=false;
 
   function loadPortrait(mood){
     if(portraitCache.has(mood))return Promise.resolve(portraitCache.get(mood));
-    return new Promise((resolve,reject)=>{
-      const source=new Image();
-      source.onload=()=>{
-        const src=HWAYEONG_PORTRAITS[mood];
-        portraitCache.set(mood,src);
-        resolve(src);
+    if(portraitLoads.has(mood))return portraitLoads.get(mood);
+    const source=new Image();
+    source.className='hwayeong-sprite';
+    source.alt='이화영';
+    source.setAttribute('aria-hidden','true');
+    source.loading='eager';
+    const loading=new Promise((resolve,reject)=>{
+      source.onload=async()=>{
+        try{
+          // Keep the decoded image itself mounted; switching never changes src.
+          if(source.decode)await source.decode();
+          portraitCache.set(mood,source);
+          resolve(source);
+        }catch(error){reject(error)}
       };
       source.onerror=()=>reject(new Error('Portrait not found: '+HWAYEONG_PORTRAITS[mood]));
       source.src=HWAYEONG_PORTRAITS[mood];
+      $('hwayeongSprite').appendChild(source);
+    }).catch(error=>{
+      source.remove();
+      portraitLoads.delete(mood);
+      throw error;
     });
+    portraitLoads.set(mood,loading);
+    return loading;
   }
   function hideHwayeong(){
     hwayeongOnStage=false;
-    const sprite=$('hwayeongSprite');
-    if(sprite)sprite.classList.remove('visible');
+    portraitCache.forEach(sprite=>{
+      sprite.classList.remove('visible');
+      sprite.setAttribute('aria-hidden','true');
+    });
   }
   function setHwayeongMood(mood='normal'){
     hwayeongMood=mood;
     hwayeongOnStage=true;
-    const sprite=$('hwayeongSprite');
-    if(!sprite)return;
-
-    const cached=portraitCache.get(mood);
-    if(cached){
-      sprite.src=cached;
-      sprite.classList.add('visible');
-      return;
-    }
-
-    loadPortrait(mood).then(src=>{
-      if(!hwayeongOnStage || hwayeongMood!==mood)return;
-      sprite.src=src;
-      sprite.classList.add('visible');
-    }).catch(()=>{
-      sprite.classList.remove('visible');
-    });
+    const show=()=>{
+      portraitCache.forEach((sprite,key)=>{
+        sprite.classList.toggle('visible',key===mood);
+        sprite.setAttribute('aria-hidden',String(key!==mood));
+      });
+    };
+    if(portraitCache.has(mood)){show();return}
+    loadPortrait(mood).then(()=>{
+      if(hwayeongOnStage && hwayeongMood===mood)show();
+    }).catch(()=>{});
   }
   function preloadPortraits(){
-    Object.keys(HWAYEONG_PORTRAITS).forEach(mood=>{loadPortrait(mood).catch(()=>{})});
+    return Promise.all(Object.keys(HWAYEONG_PORTRAITS).map(loadPortrait)).then(()=>{
+      portraitsReady=true;
+    });
+  }
+  async function enterWhenReady(action){
+    if(enteringGame)return;
+    if(portraitsReady){action();return}
+    enteringGame=true;
+    const button=$('newBtn');
+    const label=button.textContent;
+    button.textContent='캐릭터 준비 중…';
+    button.disabled=true;
+    $('continueBtn').disabled=true;
+    try{
+      await preloadPortraits();
+      action();
+    }catch(_){
+      alert('캐릭터 이미지를 불러오지 못했습니다. 다시 시작해 주세요.');
+    }finally{
+      enteringGame=false;
+      button.textContent=label;
+      button.disabled=false;
+      updateContinueButton();
+    }
   }
   function hwayeongSay(text,mood='normal',options=[],onAdvance=null){
     setHwayeongMood(mood);
@@ -144,7 +180,7 @@
   function introFor(loc){if(loc==='house')return'화영의 방. 벽에 낯선 풍경의 그림이 걸려 있다.';if(loc==='barrier')return'결계 가까이 다가가자 표면에 긴 긁힌 자국이 보인다.';return'조용한 광장. 화영이 가로등 아래 서 있다.'}
   function renderPlaces(){const box=$('places');box.innerHTML='';[['plaza','광장'],['house','화영의 집'],['barrier','결계']].forEach(([id,label])=>{const button=document.createElement('button');button.type='button';button.className='place'+(state.loc===id?' on':'');button.disabled=!state.unlocked[id];button.textContent=(button.disabled?'🔒 ':'')+label;button.addEventListener('click',()=>{hideHwayeong();state.loc=id;closeArchive();renderScene();say('일운',introFor(id),id==='plaza'?[{label:'화영과 이야기한다',action:talk}]:[])});box.appendChild(button)})}
   function makeHotspot(key,left,top){const button=document.createElement('button');button.type='button';button.className='hot'+(state.traces[key]?' done':'');button.style.left=left;button.style.top=top;button.textContent='?';button.setAttribute('aria-label',traces[key].title);button.addEventListener('click',()=>inspect(key));$('hots').appendChild(button)}
-  function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div>';makeHotspot('clock','31%','28%')}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%')}if(hwayeongOnStage)setHwayeongMood(hwayeongMood);else $('hwayeongSprite').classList.remove('visible');updateStatus()}
+  function renderScene(){const art=$('art');$('hots').innerHTML='';$('locTitle').textContent=state.loc==='plaza'?'꿈속 광장':state.loc==='house'?'화영의 집':'결계';if(state.loc==='plaza'){art.innerHTML='<div class="ground"></div><div class="house"></div>';makeHotspot('clock','31%','28%')}else if(state.loc==='house'){art.innerHTML='<div class="room"><div class="painting"></div></div>';makeHotspot('painting','30%','30%')}else{art.innerHTML='<div class="ground"></div><div class="barrier"></div>';makeHotspot('scratch','75%','48%')}if(hwayeongOnStage)setHwayeongMood(hwayeongMood);else hideHwayeong();updateStatus()}
   function inspect(key){
     hideHwayeong();
     state.traces[key]=true;
@@ -173,12 +209,12 @@
   function updateContinueButton(){$('continueBtn').disabled=!safeStorageGet(SAVE_KEY)}
   function startNewGame(){state=freshState();hwayeongMood='normal';hwayeongOnStage=false;showScreen('game');renderScene();hwayeongSay('“처음 보는 사람이네요. 길을 잃었어요?”','normal',[{label:'“여긴 어디야?”',primary:true,action:()=>playerSpeak('여긴… 어디야?',()=>hwayeongSay('“꿈이라고 생각하면 편해요.”','normal'))},{label:'주변부터 살펴본다',action:()=>playerThink('…일단 주변부터 확인해보자.')}])}
   document.querySelector('.dialog').addEventListener('click',advanceDialogue);
-  $('newBtn').addEventListener('click',startNewGame);
-  $('continueBtn').addEventListener('click',()=>{if(!loadGame()){alert('저장 데이터가 없습니다.');updateContinueButton();return}hwayeongOnStage=false;showScreen('game');renderScene();say('일운','저장된 꿈의 흐름을 이어간다.')});
+  $('newBtn').addEventListener('click',()=>enterWhenReady(startNewGame));
+  $('continueBtn').addEventListener('click',()=>enterWhenReady(()=>{if(!loadGame()){alert('저장 데이터가 없습니다.');updateContinueButton();return}hwayeongOnStage=false;showScreen('game');renderScene();say('일운','저장된 꿈의 흐름을 이어간다.')}));
   $('talkBtn').addEventListener('click',talk);
   $('recordBtn').addEventListener('click',()=>openArchive('traces'));
   $('saveBtn').addEventListener('click',saveGame);
   $('titleBtn').addEventListener('click',()=>{hideHwayeong();showScreen('title')});
-  preloadPortraits();
+  preloadPortraits().catch(()=>{});
   updateContinueButton();
 })();
