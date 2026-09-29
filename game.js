@@ -12,9 +12,9 @@
   function freshState(){return{loc:'plaza',trust:0,traces:{},memory:false,decoded:false,unlocked:{plaza:true,house:false,barrier:false},decisions:{barrier:null,confront:null},tab:'traces'};}
   let state=freshState();
   const HWAYEONG_PORTRAITS={
-    normal:'./assets/characters/화영(일반).png?v=9',
-    anxious:'./assets/characters/화영(불안).png?v=9',
-    grateful:'./assets/characters/화영(감사).png?v=9'
+    normal:'./assets/characters/화영(일반).png?v=12',
+    anxious:'./assets/characters/화영(불안).png?v=12',
+    grateful:'./assets/characters/화영(감사).png?v=12'
   };
   const portraitCache=new Map();
   const portraitLoads=new Map();
