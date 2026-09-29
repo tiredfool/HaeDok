@@ -23,6 +23,8 @@
     .archive{margin-top:10px}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tab{border:1px solid var(--line);border-radius:999px;background:transparent;padding:6px 10px;cursor:pointer}.tab.on{border-color:var(--accent);background:#2b2438}
     .item{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:10px 0;cursor:pointer}.item small{display:block;color:var(--muted);margin-top:4px}.detail{border:1px solid var(--line);border-radius:12px;padding:12px}.note{margin-top:9px;font-style:italic;color:#cfd6dc}.cg{height:180px;border-radius:12px;background:linear-gradient(145deg,#5c6977,#222a34);display:flex;align-items:flex-end;padding:14px;margin-top:10px}
     .hide{display:none!important}@media(max-width:900px){.layout{grid-template-columns:1fr}.side{order:2}.scene{min-height:520px;aspect-ratio:auto}.hwayeong-sprite{left:-1%;right:auto;height:90%;max-width:58%}}@media(max-width:700px){.game{padding:10px}.scene{min-height:460px;border-radius:16px}.card h1{font-size:54px}.dialog{left:10px;right:10px;bottom:10px;padding:13px 14px}.line{font-size:15px;min-height:70px}.choices{grid-template-columns:1fr}.hwayeong-sprite{left:-10%;right:auto;height:86%;max-width:74%}}
+    .cg-preview{display:block;width:100%;padding:0;margin-top:10px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#10151e;color:var(--txt);cursor:pointer;text-align:left}.cg-preview img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain}.cg-preview span{display:block;padding:12px}.cg-preview:hover{border-color:var(--accent)}
+    .memory-cg{width:min(1400px,96vw);max-width:96vw;max-height:96dvh;padding:0;border:1px solid #6c7184;border-radius:16px;background:#0b1019;color:var(--txt);overflow:auto;box-shadow:0 24px 90px #0009}.memory-cg::backdrop{background:rgba(3,6,12,.94)}.memory-cg img{display:block;width:100%;height:auto;max-height:72dvh;object-fit:contain;background:#080c12}.memory-cg-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px}.memory-cg h2{margin:0 0 6px;font-size:22px}.memory-cg blockquote{margin:0;color:#cbd4e2;line-height:1.6}.memory-cg-footer .btn{flex-shrink:0}.cg-status:empty{display:none}.cg-status{padding:0 20px;color:var(--muted)}@media(max-width:600px){.memory-cg-footer{align-items:flex-start;flex-direction:column;padding:14px}.memory-cg h2{font-size:19px}}
   </style>
 </head>
 <body>
@@ -31,6 +33,11 @@
     <div class="top"><div><p class="eyebrow">FIRST NIGHT</p><h2 id="locTitle">꿈속 광장</h2></div><div class="chips"><span id="traceStat" class="chip">흔적 0</span><span id="memoryStat" class="chip">기억 0</span><span id="trustStat" class="chip">화영 · 낯섦</span></div></div>
     <div class="layout"><main><div id="scene" class="scene"><div class="moon"></div><div id="art"></div><div id="hwayeongSprite"></div><div id="hots"></div><div class="dialog"><div id="speaker" class="speaker">—</div><div id="text" class="line">게임을 시작해 주세요.</div></div></div><div id="choices" class="choices"></div><div class="row" style="margin-top:11px"><button id="talkBtn" type="button" class="btn">화영과 대화</button><button id="recordBtn" type="button" class="btn">기록</button><button id="saveBtn" type="button" class="btn">저장</button><button id="titleBtn" type="button" class="btn">타이틀</button></div><div id="archive" class="archive hide"></div></main><aside class="side"><h3>꿈속 마을</h3><div id="places"></div><h3>현재 감각</h3><p id="hint" class="muted">화영과 먼저 이야기해보자.</p></aside></div>
   </section>
-  <script src="./game.js?v=10"></script>
+  <dialog id="memoryCG" class="memory-cg" aria-labelledby="memoryCGTitle" aria-describedby="memoryCGQuote">
+    <img id="memoryCGImage" src="./assets/cg/memory-01.png" alt="화영이 투명한 결계에 손끝을 대고, 안개 낀 산과 멀리 빛나는 마을을 바라본다." loading="eager">
+    <div class="memory-cg-footer"><div><p class="eyebrow">MEMORY 01</p><h2 id="memoryCGTitle">보지 못한 풍경</h2><blockquote id="memoryCGQuote">“본 적은 없는데… 기억나요.”</blockquote></div><button id="closeMemoryCG" type="button" class="btn primary" autofocus>게임으로 돌아가기</button></div>
+    <p id="memoryCGStatus" class="cg-status" role="status"></p>
+  </dialog>
+  <script src="./game.js?v=11"></script>
 </body>
 </html>
